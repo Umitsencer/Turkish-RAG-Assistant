@@ -1,0 +1,15 @@
+Turkiye Cumhuriyeti - Ornek Belge
+
+Turkiye, Avrupa ve Asya kitalarinda yer alan koklu bir uygarlik tarihine sahip ulkedir.
+Baskenti Ankara olup, en buyuk sehri Istanbul'dur.
+Nufusu yaklasik 85 milyon kisidir.
+
+Yapay Zeka Alanindaki Gelismeler:
+Turkiye, yapay zeka alaninda onemli yatirimlar yapmaktadir.
+TUBITAK koordinasyonuyla yurutulen arastirmalar, ulusal LLM ve bilgisayarli goru
+projelerini kapsamaktadir. Bu alandaki girisimler hem savunma sanayi hem de ticari
+uygulamalar icin kritik oneme sahiptir.
+
+Teknoloji Ekosistemi:
+Ulkede 50yi askin aktif teknokent ve Ar-Ge merkezi faaliyet gostermektedir.
+ODTU Teknokent, Bilisim Vadisi ve ITU ARI Teknokent en onemli teknoloji kumeleridir.
