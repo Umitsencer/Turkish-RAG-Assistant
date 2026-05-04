@@ -7,6 +7,7 @@
 [![LangChain](https://img.shields.io/badge/LangChain-0.2-green)](https://langchain.com)
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-0.4-orange)](https://trychroma.com)
 [![HuggingFace](https://img.shields.io/badge/HuggingFace-Transformers-yellow)](https://huggingface.co)
+[![Tests](https://img.shields.io/badge/tests-14%20passed-brightgreen)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
 ---
@@ -16,35 +17,34 @@
 This project implements a production-ready **RAG (Retrieval-Augmented Generation)** pipeline optimized for Turkish-language documents. It allows you to:
 
 - **Index** any `.txt` or `.pdf` file into a local ChromaDB vector store
-- **Retrieve** the most relevant document chunks for a query
-- **Generate** grounded answers using a local HuggingFace model (no OpenAI key needed)
-
-The pipeline uses **multilingual sentence embeddings** that handle Turkish text natively, making it suitable for Turkce document QA, enterprise knowledge bases, and research assistants.
+- **Retrieve** the most relevant document chunks for a query using multilingual embeddings
+- **Generate** grounded answers using a local HuggingFace model — no OpenAI key needed
+- **Cite sources** — every answer comes with the source chunk it was derived from
 
 ---
 
 ## Architecture
 
 ```
-Document(s)
-    │
-    ▼
-TextSplitter (chunk_size=500, overlap=50)
-    │
-    ▼
+Document(s) (.txt / .pdf)
+        │
+        ▼
+RecursiveCharacterTextSplitter  (chunk_size=500, overlap=50)
+        │
+        ▼
 HuggingFace Embeddings          ← paraphrase-multilingual-MiniLM-L12-v2
-(sentence-transformers)
-    │
-    ▼
-ChromaDB VectorStore            ← persistent local storage
-    │
-    ▼
+(sentence-transformers)             Native Turkish + 50 language support
+        │
+        ▼
+ChromaDB VectorStore            ← persistent local storage (no re-index on restart)
+        │
+        ▼
 Retriever (top-k=3)
-    │
-    ▼
+        │
+        ▼
 RetrievalQA Chain (LangChain)   ← PromptTemplate + HuggingFacePipeline
-    │
-    ▼
+        │
+        ▼
 Answer + Source Citations
 ```
 
@@ -53,14 +53,14 @@ Answer + Source Citations
 ## Quickstart
 
 ```bash
-# 1. Clone the repo
+# 1. Clone
 git clone https://github.com/Umitsencer/Turkish-RAG-Assistant.git
 cd Turkish-RAG-Assistant
 
-# 2. Install dependencies
+# 2. Install
 pip install -r requirements.txt
 
-# 3. Run the demo (uses the included sample document)
+# 3. Run demo (uses included sample document)
 python demo.py --docs docs/ornek.txt --query "Turkiye'nin baskenti neresidir?"
 ```
 
@@ -85,22 +85,18 @@ Kaynak Parcalar:
 ```python
 from src.rag_pipeline import TurkishRAGPipeline
 
-# Initialize
 rag = TurkishRAGPipeline(persist_dir="./my_db")
 
-# Index documents (first time)
-rag.build_vectorstore(["my_document.pdf", "report.txt"])
-
-# Build QA chain
+# First run — index documents
+rag.build_vectorstore(["report.pdf", "notes.txt"])
 rag.build_qa_chain(top_k=3)
 
-# Query
 result = rag.query("Bu raporda hangi riskler belirtilmistir?")
 print(result["answer"])
 for src in result["sources"]:
     print(f"  Source: {src['source']}")
 
-# Load existing index (subsequent runs — much faster)
+# Subsequent runs — load existing index (much faster)
 rag2 = TurkishRAGPipeline()
 rag2.load_existing_vectorstore()
 rag2.build_qa_chain()
@@ -114,10 +110,9 @@ rag2.build_qa_chain()
 Turkish-RAG-Assistant/
 ├── src/
 │   ├── __init__.py
-│   └── rag_pipeline.py        # Core RAG pipeline class
+│   └── rag_pipeline.py        # Core TurkishRAGPipeline class
 ├── tests/
-│   ├── __init__.py
-│   └── test_pipeline.py       # Unit tests (pytest + mocking)
+│   └── test_pipeline.py       # 14 unit tests (pytest + mocking)
 ├── docs/
 │   └── ornek.txt              # Sample Turkish document
 ├── demo.py                    # CLI demo script
@@ -130,32 +125,35 @@ Turkish-RAG-Assistant/
 ## Tests
 
 ```bash
-# Run all tests
+# Run all tests (no model download needed)
 pytest tests/ -v
 
-# Run with coverage
+# With coverage report
 pytest tests/ --cov=src --cov-report=term-missing
-
-# Run only unit tests (no model download)
-pytest tests/ -v -k "TestConstants"
 ```
 
-### Test Results
+### Test Results (Python 3.11, pytest 9.0)
 
 ```
-tests/test_pipeline.py::TestConstants::test_chunk_size_positive        PASSED
-tests/test_pipeline.py::TestConstants::test_chunk_overlap_less_than_size PASSED
-tests/test_pipeline.py::TestConstants::test_chunk_size_value           PASSED
-tests/test_pipeline.py::TestConstants::test_chunk_overlap_value        PASSED
-tests/test_pipeline.py::TestRAGPipelineUnit::test_init_sets_persist_dir PASSED
-tests/test_pipeline.py::TestRAGPipelineUnit::test_vectorstore_initially_none PASSED
-tests/test_pipeline.py::TestRAGPipelineUnit::test_qa_chain_initially_none PASSED
-tests/test_pipeline.py::TestRAGPipelineUnit::test_query_raises_without_chain PASSED
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.3
+
+tests/test_pipeline.py::TestConstants::test_chunk_size_positive                        PASSED
+tests/test_pipeline.py::TestConstants::test_chunk_overlap_less_than_size               PASSED
+tests/test_pipeline.py::TestConstants::test_chunk_size_value                           PASSED
+tests/test_pipeline.py::TestConstants::test_chunk_overlap_value                        PASSED
+tests/test_pipeline.py::TestRAGPipelineUnit::test_init_sets_persist_dir                PASSED
+tests/test_pipeline.py::TestRAGPipelineUnit::test_vectorstore_initially_none           PASSED
+tests/test_pipeline.py::TestRAGPipelineUnit::test_qa_chain_initially_none              PASSED
+tests/test_pipeline.py::TestRAGPipelineUnit::test_query_raises_without_chain           PASSED
 tests/test_pipeline.py::TestRAGPipelineUnit::test_similarity_search_raises_without_vectorstore PASSED
 tests/test_pipeline.py::TestRAGPipelineUnit::test_build_qa_chain_raises_without_vectorstore PASSED
-tests/test_pipeline.py::TestRAGPipelineUnit::test_load_nonexistent_file_raises PASSED
+tests/test_pipeline.py::TestRAGPipelineUnit::test_load_nonexistent_file_raises         PASSED
+tests/test_pipeline.py::TestRAGPipelineUnit::test_load_existing_file                  PASSED
+tests/test_pipeline.py::TestRAGPipelineUnit::test_build_vectorstore_sets_vectorstore   PASSED
+tests/test_pipeline.py::TestRAGPipelineUnit::test_query_returns_dict_after_setup       PASSED
 
-11 passed in 0.43s
+======================== 14 passed in 0.07s ==============================
 ```
 
 ---
@@ -164,35 +162,30 @@ tests/test_pipeline.py::TestRAGPipelineUnit::test_load_nonexistent_file_raises P
 
 | Decision | Rationale |
 |---|---|
-| **ChromaDB** over FAISS | Persistent storage, no re-indexing on restart |
+| **ChromaDB** over FAISS | Persistent storage — no re-indexing on restart |
 | **Multilingual embeddings** | Native Turkish support without fine-tuning |
-| **Local LLM** (HuggingFace) | Zero API cost, works offline, KVKK-compliant |
+| **Local LLM (HuggingFace)** | Zero API cost, works offline, KVKK-compliant |
 | **RecursiveCharacterTextSplitter** | Preserves semantic boundaries better than fixed-size |
-| **Mock-based tests** | CI runs without downloading 400MB+ models |
+| **Mock-based tests** | CI runs in <0.1s — no 400MB+ model download |
 
 ---
 
-## Extending the Pipeline
+## Swap the Generator Model
 
-**Swap the generator model** for a more powerful one:
 ```python
-GENERATOR_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"  # requires GPU
-GENERATOR_MODEL = "google/flan-t5-base"                  # lightweight CPU
-```
-
-**Add more document types**:
-```python
-from langchain_community.document_loaders import UnstructuredWordDocumentLoader
-# Just add it to load_documents() method
+# In src/rag_pipeline.py — change one line:
+GENERATOR_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"  # powerful, needs GPU
+GENERATOR_MODEL = "google/flan-t5-base"                  # lightweight, CPU-only
+GENERATOR_MODEL = "Helsinki-NLP/opus-mt-tr-en"           # default (smallest)
 ```
 
 ---
 
 ## Related Projects
 
-- [Universal-Churn-Prediction](https://github.com/Umitsencer/Universal-Churn-Prediction) — Gradient Boosting churn model
-- [Smart-OCR-Extractor](https://github.com/Umitsencer/Smart-OCR-Extractor) — EasyOCR + OpenCV for Turkish IDs
+- [Turkish-NLP-Text-Classifier](https://github.com/Umitsencer/Turkish-NLP-Text-Classifier) — BERT zero-shot text classifier
 - [Finansal-Haber-NLP](https://github.com/Umitsencer/Finansal-Haber-NLP) — FinBERT sentiment signals
+- [Smart-OCR-Extractor](https://github.com/Umitsencer/Smart-OCR-Extractor) — OCR for Turkish IDs
 
 ---
 
